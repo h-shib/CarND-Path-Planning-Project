@@ -17,12 +17,7 @@ public:
 	// reference velocity, max 50MPH
 	double ref_vel;
 
-	// path selection
-	//enum PathPlans = {KEEP_LANE = 1, CHANGE_LANE_LEFT = 2}
-
-	// trajectory
-
-
+	enum Plans {KEEP_LANE, CHANGE_LANE_LEFT, CHANGE_LANE_RIGHT};
 
 	/**
 	* Constructor
@@ -38,11 +33,19 @@ public:
 	void UpdateState(json json_data);
 
 private:
+	void TakeAction(Plans plan, json json_data);
+
 	// Lane change method
 	void ChangeLane(char direction);
 
 	// Control acceleration
-	void ControlAcceleration(bool too_close);
+	void ControlAcceleration(json json_data);
+
+	void KeepLane(json json_data);
+
+	void ChangeLaneLeft(json json_data);
+
+	void ChangeLaneRight(json json_data);
 
 };
 

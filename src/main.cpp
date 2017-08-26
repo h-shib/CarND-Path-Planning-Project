@@ -365,11 +365,6 @@ int main() {
               next_y_vals.push_back(previous_path_y[i]);
             }
 
-            cout << "Start" << endl;
-            for (int i = 0; i < next_x_vals.size(); i++) {
-              cout << next_x_vals[i] << endl;
-            }
-            cout << "end" << endl;
 
             double target_x = 30.0;
             double target_y = s(target_x);
