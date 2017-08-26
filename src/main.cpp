@@ -9,6 +9,7 @@
 #include "Eigen-3.3/Eigen/QR"
 #include "json.hpp"
 #include "spline.h"
+#include "path_planner.h"
 
 using namespace std;
 
@@ -198,12 +199,17 @@ int main() {
   }
 
   // start in lane 1;
-  int lane = 1;
+  int lane = 2;
 
   // reference velocity to target
   double ref_vel = 0;
 
-  h.onMessage([&ref_vel, &map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy, &lane](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
+  PathPlanner planner;
+
+  planner.lane = lane;
+  planner.ref_vel = ref_vel;
+
+  h.onMessage([&planner, &ref_vel, &map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy, &lane](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -242,11 +248,12 @@ int main() {
 
             int prev_size = previous_path_x.size();
 
-
+            
+            // PATH PLANNING
             if (prev_size > 0) {
               car_s = end_path_s;
             }
-
+            /*
             bool too_close = false;
 
             // find ref_v to use
@@ -276,10 +283,18 @@ int main() {
             } else if (ref_vel < 49.5) {
               ref_vel += .224;
             }
+            */
+
+            planner.UpdateState(j[1]);
+            lane = planner.lane;
+            ref_vel = planner.ref_vel;
 
 
 
 
+            /*
+            * TRAJECTORY
+            */
             // widely spaced (x, y) waypoints
             vector<double> ptsx;
             vector<double> ptsy;
@@ -314,8 +329,6 @@ int main() {
               ptsy.push_back(ref_y_prev);
               ptsy.push_back(ref_y);
             }
-
-
 
             // Convert to Frenet
             vector<double> next_wp0 = getXY(car_s+30, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
@@ -352,6 +365,12 @@ int main() {
               next_y_vals.push_back(previous_path_y[i]);
             }
 
+            cout << "Start" << endl;
+            for (int i = 0; i < next_x_vals.size(); i++) {
+              cout << next_x_vals[i] << endl;
+            }
+            cout << "end" << endl;
+
             double target_x = 30.0;
             double target_y = s(target_x);
             double target_dist = sqrt(target_x * target_x + target_y * target_y);
@@ -381,21 +400,6 @@ int main() {
 
 
 
-            // TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
-
-            /*
-            double dist_inc = 0.3;
-            for(int i = 0; i < 50; i++)
-            {
-              double next_s = car_s + (i+1) * dist_inc;
-              double next_d = 6.0;
-
-              vector<double> xy = getXY(next_s, next_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
-
-              next_x_vals.push_back(xy[0]);
-              next_y_vals.push_back(xy[1]);
-            }
-            */
 
             json msgJson;
 
