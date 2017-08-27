@@ -36,52 +36,77 @@ void PathPlanner::UpdateState(json json_data) {
 	int prev_size = previous_path_x.size();
 
 
-
-	// create trajectory
-	// calculate costs
-	// choose best action
-
-
-	// viable actions
-	//enum plans {KEEP_LANE, CHANGE_LANE_LEFT};
-	Plans p;
-	p = KEEP_LANE;
+	if (lane_change_count > 0) {
+		lane_change_count += 1;
+		if (lane_change_count < 100) {
+			cout << "changing lane" << endl;
+			plan = KEEP_LANE;
+			TakeAction(plan, json_data);
+			return;
+		}
+		lane_change_count = 0;
+	}
 
 
 	if (prev_size > 0) {
 	  car_s = end_path_s;
 	}
 
-	bool too_close = false;
-
+	// Behavior planning
 
 	for (int i = 0; i < sensor_fusion.size(); i++) {
-    // car is in my lane
-    float d = sensor_fusion[i][6];
-    if (d < (4+lane*4) && d > (lane*4)) {
-      double vx = sensor_fusion[i][3];
+		// check the car in front of EGO
+		float d = sensor_fusion[i][6];
+		if (d < (4+lane*4) && d > (lane*4)) {
+			double vx = sensor_fusion[i][3];
       double vy = sensor_fusion[i][4];
       double check_speed = sqrt(vx*vx + vy*vy);
       double check_car_s = sensor_fusion[i][5];
 
       check_car_s += (double)prev_size * .02 * check_speed;
 
-      if ((check_car_s > car_s) && ((check_car_s - car_s) < 40)) {
-      	if (lane > 0) {
-      		p = CHANGE_LANE_LEFT;
-      	} else {
-      		p = CHANGE_LANE_RIGHT;
-      	}
+      if ((check_car_s > car_s) && ((check_car_s - car_s) < 30)) {
+      	plan = PREPARE_CHANGE_LANE;
       }
-    }
-  }
-  TakeAction(p, json_data);
+		}
+	}
+
+	// check the safety for changing lane
+	if (plan == PREPARE_CHANGE_LANE) {
+		bool safe_to_change_lane_left = true;
+		bool safe_to_change_lane_right = true;
+		for (int i = 0; i < sensor_fusion.size(); i++) {
+			float d = sensor_fusion[i][6];
+			double vx = sensor_fusion[i][3];
+      double vy = sensor_fusion[i][4];
+      double check_speed = sqrt(vx*vx + vy*vy);
+      double check_car_s = sensor_fusion[i][5];
+
+      check_car_s += (double)prev_size * .02 * check_speed;
+
+      if (d > (lane*4-4) && d < (lane*4) && (check_car_s - car_s) < 30 && (check_car_s - car_s) > -15) {
+      	safe_to_change_lane_left = false;
+      }
+      if (d > (lane*4+4) && d < (lane*4+8) && (check_car_s - car_s) < 30 && (check_car_s - car_s) > -15) {
+      	safe_to_change_lane_right = false;
+      }
+		}
+		if (lane < 1 || ref_vel > 35) safe_to_change_lane_left = false;
+		if (lane > 1 || ref_vel > 35) safe_to_change_lane_right = false;
+
+		if (safe_to_change_lane_left) plan = CHANGE_LANE_LEFT;
+		if (safe_to_change_lane_right) plan = CHANGE_LANE_RIGHT;
+	}
+
+	cout << "Action: " << plan << endl;
+	TakeAction(plan, json_data);
 
 }
 
 void PathPlanner::TakeAction(Plans plan, json json_data) {
 	switch(plan) {
 		case KEEP_LANE: KeepLane(json_data); break;
+		case PREPARE_CHANGE_LANE: PrepareChangeLane(json_data); break;
 		case CHANGE_LANE_LEFT: ChangeLaneLeft(json_data); break;
 		case CHANGE_LANE_RIGHT: ChangeLaneRight(json_data); break;
 	}
@@ -120,7 +145,7 @@ void PathPlanner::ControlAcceleration(json json_data) {
 
 			check_car_s += (double)prev_size * .02 * check_speed;
 
-			if ((check_car_s > car_s) && (check_car_s - car_s) < 40) {
+			if ((check_car_s > car_s) && (check_car_s - car_s) < 30) {
 				too_close = true;
 			}
 		}
@@ -129,24 +154,33 @@ void PathPlanner::ControlAcceleration(json json_data) {
 	if (too_close) {
     ref_vel -= .224;
   } else if (ref_vel < 49.5) {
-    ref_vel += .224;
+    ref_vel += .3;
   }
 }
 
 
 void PathPlanner::KeepLane(json json_data) {
+
+	ControlAcceleration(json_data);
+}
+
+void PathPlanner::PrepareChangeLane(json json_data) {
 	ControlAcceleration(json_data);
 }
 
 void PathPlanner::ChangeLaneLeft(json json_data) {
 	if (lane > 0) {
 		lane -= 1;
+		lane_change_count = 1;
+		ControlAcceleration(json_data);
 	}
-	ControlAcceleration(json_data);
 }
 
 void PathPlanner::ChangeLaneRight(json json_data) {
-	lane += 1;
+	if (lane < 2) {
+		lane += 1;
+		lane_change_count = 1;
+	}
 	ControlAcceleration(json_data);
 }
 

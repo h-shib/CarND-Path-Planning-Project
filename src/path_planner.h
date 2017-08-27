@@ -17,7 +17,11 @@ public:
 	// reference velocity, max 50MPH
 	double ref_vel;
 
-	enum Plans {KEEP_LANE, CHANGE_LANE_LEFT, CHANGE_LANE_RIGHT};
+	enum Plans {KEEP_LANE, PREPARE_CHANGE_LANE, CHANGE_LANE_LEFT, CHANGE_LANE_RIGHT};
+
+	Plans plan = KEEP_LANE;
+
+	int lane_change_count;
 
 	/**
 	* Constructor
@@ -33,6 +37,7 @@ public:
 	void UpdateState(json json_data);
 
 private:
+	// Choose action by plan
 	void TakeAction(Plans plan, json json_data);
 
 	// Lane change method
@@ -41,10 +46,10 @@ private:
 	// Control acceleration
 	void ControlAcceleration(json json_data);
 
+	// Actions
 	void KeepLane(json json_data);
-
+	void PrepareChangeLane(json json_data);
 	void ChangeLaneLeft(json json_data);
-
 	void ChangeLaneRight(json json_data);
 
 };

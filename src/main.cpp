@@ -199,7 +199,7 @@ int main() {
   }
 
   // start in lane 1;
-  int lane = 2;
+  int lane = 1;
 
   // reference velocity to target
   double ref_vel = 0;
@@ -208,6 +208,7 @@ int main() {
 
   planner.lane = lane;
   planner.ref_vel = ref_vel;
+  planner.lane_change_count = -1;
 
   h.onMessage([&planner, &ref_vel, &map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy, &lane](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
