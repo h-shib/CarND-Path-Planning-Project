@@ -133,6 +133,7 @@ void PathPlanner::ControlAcceleration(json json_data) {
   }
 
   bool too_close = false;
+  double min_dist = 100;
 
 	// check distance to the forward car
 	for (int i = 0; i < sensor_fusion.size(); i++) {
@@ -147,14 +148,15 @@ void PathPlanner::ControlAcceleration(json json_data) {
 
 			if ((check_car_s > car_s) && (check_car_s - car_s) < 30) {
 				too_close = true;
+				if (min_dist > (check_car_s - car_s)) min_dist = (check_car_s - car_s);
 			}
 		}
 	}
 
 	if (too_close) {
-    ref_vel -= .224;
+    ref_vel -= .224 * (2 - min_dist/30.);
   } else if (ref_vel < 49.5) {
-    ref_vel += .3;
+    ref_vel += .35;
   }
 }
 
