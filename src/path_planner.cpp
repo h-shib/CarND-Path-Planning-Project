@@ -16,26 +16,20 @@ PathPlanner::~PathPlanner() {}
 
 void PathPlanner::UpdateState(json json_data) {
 
-	double car_x     = json_data["x"];
-	double car_y     = json_data["y"];
 	double car_s     = json_data["s"];
-	double car_d     = json_data["d"];
-	double car_yaw   = json_data["yaw"];
-	double car_speed = json_data["speed"];
 
 	// Previous path data given to the Planner
 	auto previous_path_x = json_data["previous_path_x"];
-	auto previous_path_y = json_data["previous_path_y"];
-	// Previous path's end s and d values 
 	double end_path_s = json_data["end_path_s"];
-	double end_path_d = json_data["end_path_d"];
+	int prev_size = previous_path_x.size();
+	if (prev_size > 0) {
+	  car_s = end_path_s;
+	}
 
 	// Sensor Fusion Data, a list of all other cars on the same side of the road.
 	auto sensor_fusion = json_data["sensor_fusion"];
 
-	int prev_size = previous_path_x.size();
-
-
+	// check if ego car is changing lane and accept only KEEP_LANE for next state
 	if (lane_change_count > 0) {
 		lane_change_count += 1;
 		if (lane_change_count < 100) {
@@ -47,15 +41,12 @@ void PathPlanner::UpdateState(json json_data) {
 		lane_change_count = 0;
 	}
 
+	/*
+	* Behavior planning
+	*/
 
-	if (prev_size > 0) {
-	  car_s = end_path_s;
-	}
-
-	// Behavior planning
-
+	// check the car in front of ego car
 	for (int i = 0; i < sensor_fusion.size(); i++) {
-		// check the car in front of EGO
 		float d = sensor_fusion[i][6];
 		if (d < (4+lane*4) && d > (lane*4)) {
 			double vx = sensor_fusion[i][3];
@@ -65,6 +56,7 @@ void PathPlanner::UpdateState(json json_data) {
 
       check_car_s += (double)prev_size * .02 * check_speed;
 
+      // if the front car is close to ego car, prepare for lane changing
       if ((check_car_s > car_s) && ((check_car_s - car_s) < 30)) {
       	plan = PREPARE_CHANGE_LANE;
       }
@@ -75,6 +67,7 @@ void PathPlanner::UpdateState(json json_data) {
 	if (plan == PREPARE_CHANGE_LANE) {
 		bool safe_to_change_lane_left = true;
 		bool safe_to_change_lane_right = true;
+		
 		for (int i = 0; i < sensor_fusion.size(); i++) {
 			float d = sensor_fusion[i][6];
 			double vx = sensor_fusion[i][3];
@@ -109,14 +102,6 @@ void PathPlanner::TakeAction(Plans plan, json json_data) {
 		case PREPARE_CHANGE_LANE: PrepareChangeLane(json_data); break;
 		case CHANGE_LANE_LEFT: ChangeLaneLeft(json_data); break;
 		case CHANGE_LANE_RIGHT: ChangeLaneRight(json_data); break;
-	}
-}
-
-void PathPlanner::ChangeLane(char direction) {
-	if (direction == 'L') {
-		lane -= 1;
-	} else if (direction == 'R') {
-		lane += 1;
 	}
 }
 
@@ -162,7 +147,6 @@ void PathPlanner::ControlAcceleration(json json_data) {
 
 
 void PathPlanner::KeepLane(json json_data) {
-
 	ControlAcceleration(json_data);
 }
 
