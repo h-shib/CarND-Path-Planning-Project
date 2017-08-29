@@ -16,7 +16,7 @@ PathPlanner::~PathPlanner() {}
 
 void PathPlanner::UpdateState(json json_data) {
 
-	double car_s     = json_data["s"];
+	double car_s = json_data["s"];
 
 	// Previous path data given to the Planner
 	auto previous_path_x = json_data["previous_path_x"];
@@ -40,10 +40,6 @@ void PathPlanner::UpdateState(json json_data) {
 		}
 		lane_change_count = 0;
 	}
-
-	/*
-	* Behavior planning
-	*/
 
 	// check the car in front of ego car
 	for (int i = 0; i < sensor_fusion.size(); i++) {
@@ -169,34 +165,3 @@ void PathPlanner::ChangeLaneRight(json json_data) {
 	}
 	ControlAcceleration(json_data);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

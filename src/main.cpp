@@ -248,49 +248,17 @@ int main() {
             auto sensor_fusion = j[1]["sensor_fusion"];
 
             int prev_size = previous_path_x.size();
-
-            
-            // PATH PLANNING
             if (prev_size > 0) {
               car_s = end_path_s;
             }
+
+
             /*
-            bool too_close = false;
-
-            // find ref_v to use
-            for (int i = 0; i < sensor_fusion.size(); i++) {
-              // car is in my lane
-              float d = sensor_fusion[i][6];
-              if (d < (4+lane*4) && d > (lane*4)) {
-                double vx = sensor_fusion[i][3];
-                double vy = sensor_fusion[i][4];
-                double check_speed = sqrt(vx*vx + vy*vy);
-                double check_car_s = sensor_fusion[i][5];
-
-                check_car_s += (double)prev_size * .02 * check_speed;
-
-                if ((check_car_s > car_s) && ((check_car_s - car_s) < 30)) {
-                  //ref_vel = 29.5;
-                  too_close = true;
-                  if (lane > 0) {
-                    lane -= 1;
-                  }
-                }
-              }
-            }
-
-            if (too_close) {
-              ref_vel -= .224;
-            } else if (ref_vel < 49.5) {
-              ref_vel += .224;
-            }
+            * PATH PLANNING
             */
-
             planner.UpdateState(j[1]);
             lane = planner.lane;
             ref_vel = planner.ref_vel;
-
-
 
 
             /*
@@ -354,8 +322,8 @@ int main() {
               ptsy[i] = (shift_x * sin(0-ref_yaw) + shift_y * cos(0-ref_yaw));
             }
 
+            // use spline library to interpolate trajectory
             tk::spline s;
-
             s.set_points(ptsx, ptsy);
 
             vector<double> next_x_vals;
@@ -366,12 +334,10 @@ int main() {
               next_y_vals.push_back(previous_path_y[i]);
             }
 
-
             double target_x = 30.0;
             double target_y = s(target_x);
             double target_dist = sqrt(target_x * target_x + target_y * target_y);
             double x_add_on = 0;
-
 
             for (int i = 1; i <= 50-previous_path_x.size(); i++) {
               double N = (target_dist/(.02*ref_vel/2.24));
@@ -392,10 +358,6 @@ int main() {
               next_x_vals.push_back(x_point);
               next_y_vals.push_back(y_point);
             }
-
-
-
-
 
             json msgJson;
 
@@ -449,83 +411,3 @@ int main() {
   }
   h.run();
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
