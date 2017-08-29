@@ -1,6 +1,34 @@
 # CarND-Path-Planning-Project
 Self-Driving Car Engineer Nanodegree Program
-   
+
+## WRITE UP
+Finally, the car was able to drive whole track without any incident. The longet distance the car drove was over 25 miles.
+
+![screen shot]()
+
+I set 49.5 mph for the maximum velocity, and add/subtruct reference velocity in accordance with the distance to the front car.
+For each 0.02 second, I add 0.35 mph to reference velocity if the car is not too close to the front car. If it is too close to the front car, I subtract 0.0224 * (2 - distance_to_front_car/30) from reference velocity, which means the car will slow down sharply as it gets close to the front car.
+
+I made path planner in path_planner.cpp. It selects path plan from next four plan, `Keep Lane`, `Prepare Change Lane`, `Change Lane Left`, `Change Lane Right`.
+
+I used kind of rule based approach to this problem.
+1. If there are no car in front of ego car (within 30m), accelerate until it gets 49.5 mph.
+2. If ego car gets too close to the front car, slow down and prepare for lane change.
+3. While preparing for lane change, check both sides of the lane if it is safe or not.
+4. If either side of the current lane is safe to change lane, change the lane and accelerate until it gets 49.5mph.
+
+Each step above are implemented in `path_planner.cpp` and lines are,
+step1: `line 44 - 53` and `line 145 - 147`
+step2: `line 55 - 58` and `line 149 - 151`
+step3: `line 62 - 88`
+step4: `line 153 - 167`
+
+Then, I made trajectory to follow the plan. I made 5 reference points and fit it to spline library to get smooth trajectory.(line 268-327)
+And add new way points generated from spline until it gets 50.(line 329-360)
+
+I wanted to try on generating trajectory randomly and calculate the cost of each trajectory and select the best one, however, it was so difficult to implement by the end of the term. I will come back this assignment later and give it a shot.
+
+
 ### Simulator.
 You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab (https://github.com/udacity/self-driving-car-sim/releases).
 
