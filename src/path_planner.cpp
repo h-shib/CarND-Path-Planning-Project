@@ -29,12 +29,13 @@ void PathPlanner::UpdateState(json json_data) {
 	// Sensor Fusion Data, a list of all other cars on the same side of the road.
 	auto sensor_fusion = json_data["sensor_fusion"];
 
+	plan = KEEP_LANE;
+
 	// check if ego car is changing lane and accept only KEEP_LANE for next state
 	if (lane_change_count > 0) {
 		lane_change_count += 1;
-		if (lane_change_count < 100) {
+		if (lane_change_count < 80) {
 			cout << "changing lane" << endl;
-			plan = KEEP_LANE;
 			TakeAction(plan, json_data);
 			return;
 		}
@@ -53,7 +54,7 @@ void PathPlanner::UpdateState(json json_data) {
       check_car_s += (double)prev_size * .02 * check_speed;
 
       // if the front car is close to ego car, prepare for lane changing
-      if ((check_car_s > car_s) && ((check_car_s - car_s) < 30)) {
+      if ((check_car_s > car_s) && ((check_car_s - car_s) < 35)) {
       	plan = PREPARE_CHANGE_LANE;
       }
 		}
@@ -73,15 +74,15 @@ void PathPlanner::UpdateState(json json_data) {
 
       check_car_s += (double)prev_size * .02 * check_speed;
 
-      if (d > (lane*4-4) && d < (lane*4) && (check_car_s - car_s) < 30 && (check_car_s - car_s) > -15) {
+      if (d > (lane*4-4) && d < (lane*4) && (check_car_s - car_s) < 35 && (check_car_s - car_s) > -15) {
       	safe_to_change_lane_left = false;
       }
-      if (d > (lane*4+4) && d < (lane*4+8) && (check_car_s - car_s) < 30 && (check_car_s - car_s) > -15) {
+      if (d > (lane*4+4) && d < (lane*4+8) && (check_car_s - car_s) < 35 && (check_car_s - car_s) > -15) {
       	safe_to_change_lane_right = false;
       }
 		}
-		if (lane < 1 || ref_vel > 35) safe_to_change_lane_left = false;
-		if (lane > 1 || ref_vel > 35) safe_to_change_lane_right = false;
+		if (lane < 1 || ref_vel > 45) safe_to_change_lane_left = false;
+		if (lane > 1 || ref_vel > 45) safe_to_change_lane_right = false;
 
 		if (safe_to_change_lane_left) plan = CHANGE_LANE_LEFT;
 		if (safe_to_change_lane_right) plan = CHANGE_LANE_RIGHT;
@@ -129,7 +130,9 @@ void PathPlanner::ControlAcceleration(json json_data) {
 
 			if ((check_car_s > car_s) && (check_car_s - car_s) < 30) {
 				too_close = true;
-				if (min_dist > (check_car_s - car_s)) min_dist = (check_car_s - car_s);
+				if (min_dist > (check_car_s - car_s)) {
+					min_dist = (check_car_s - car_s);
+				}
 			}
 		}
 	}
@@ -147,7 +150,52 @@ void PathPlanner::KeepLane(json json_data) {
 }
 
 void PathPlanner::PrepareChangeLane(json json_data) {
-	ControlAcceleration(json_data);
+
+	double car_s = json_data["s"];
+	double end_path_s = json_data["end_path_s"];
+	auto previous_path_x = json_data["previous_path_x"];
+	auto sensor_fusion = json_data["sensor_fusion"];
+	int prev_size = previous_path_x.size();
+
+	if (prev_size > 0) {
+    car_s = end_path_s;
+  }
+
+  double min_dist = 999999;
+	double target_ref_vel = 0;
+
+	// check distance and velocity for the front car
+	for (int i = 0; i < sensor_fusion.size(); i++) {
+		float d = sensor_fusion[i][6];
+		if (d > (lane*4) && d < (4+lane*4)) {
+			double check_vx = sensor_fusion[i][3];
+			double check_vy = sensor_fusion[i][4];
+			double check_speed = sqrt(check_vx*check_vx + check_vy*check_vy);
+			double check_car_s = sensor_fusion[i][5];
+
+			check_car_s += (double)prev_size * .02 * check_speed;
+
+			if ((check_car_s > car_s) && (check_car_s - car_s) < min_dist) {
+				min_dist = check_car_s - car_s;
+				target_ref_vel = check_speed * 2.24;
+			}
+		}
+	}
+
+	// follow the front car if it is not too close
+	if (min_dist < 25) {
+		ref_vel -= .224;
+	} else {
+		if (ref_vel > target_ref_vel) {
+			ref_vel -= .224;
+		} else {
+			ref_vel += .224;
+		}
+		if (abs(ref_vel - target_ref_vel) < 1) {
+			ref_vel = target_ref_vel;
+		}
+	}
+
 }
 
 void PathPlanner::ChangeLaneLeft(json json_data) {
